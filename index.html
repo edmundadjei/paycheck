@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayCheck - Fair Pay Tracker for Agency Workers</title>
+    <meta name="description" content="Track your agency hours and verify you're being paid fairly. Free timesheet calculator with tax, NI, and pension calculations.">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        // Lucide icons as inline SVG components
+        const Plus = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+        );
+        
+        const Trash2 = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+        );
+        
+        const Download = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+        );
+        
+        const Settings = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M12 1v6m0 6v6m5.196-13.804l-4.242 4.242m0 6.364l4.242 4.242M1 12h6m6 0h6m-13.804-5.196l4.242 4.242m0 6.364l-4.242 4.242"></path>
+            </svg>
+        );
+        
+        const DollarSign = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+        );
+
+        function TimesheetCalculator() {
+            const [payRate, setPayRate] = useState(12.71);
+            const [contractedHours, setContractedHours] = useState(0);
+            const [shifts, setShifts] = useState([]);
+            const [showSettings, setShowSettings] = useState(false);
+            const [inputMode, setInputMode] = useState('time');
+            
+            // Tax and deduction settings
+            const [taxCode, setTaxCode] = useState('562L');
+            const [niCategory, setNiCategory] = useState('A');
+            const [pensionPercent, setPensionPercent] = useState(4.0);
+            const [payFrequency, setPayFrequency] = useState('weekly'); // weekly, fortnightly, monthly
+            
+            // Editing state
+            const [editingPayRate, setEditingPayRate] = useState(12.71);
+            const [editingContractedHours, setEditingContractedHours] = useState(0);
+            const [editingInputMode, setEditingInputMode] = useState('time');
+            const [editingTaxCode, setEditingTaxCode] = useState('562L');
+            const [editingNiCategory, setEditingNiCategory] = useState('A');
+            const [editingPensionPercent, setEditingPensionPercent] = useState(4.0);
+            const [editingPayFrequency, setEditingPayFrequency] = useState('weekly');
+
+            // Load data on mount
+            useEffect(() => {
+                try {
+                    const saved = localStorage.getItem('timesheetData');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        setShifts(data.shifts || []);
+                        setPayRate(data.payRate || 12.71);
+                        setContractedHours(data.contractedHours || 0);
+                        setInputMode(data.inputMode || 'time');
+                        setTaxCode(data.taxCode || '562L');
+                        setNiCategory(data.niCategory || 'A');
+                        setPensionPercent(data.pensionPercent || 4.0);
+                        setPayFrequency(data.payFrequency || 'weekly');
+                        
+                        setEditingPayRate(data.payRate || 12.71);
+                        setEditingContractedHours(data.contractedHours || 0);
+                        setEditingInputMode(data.inputMode || 'time');
+                        setEditingTaxCode(data.taxCode || '562L');
+                        setEditingNiCategory(data.niCategory || 'A');
+                        setEditingPensionPercent(data.pensionPercent || 4.0);
+                        setEditingPayFrequency(data.payFrequency || 'weekly');
+                    }
+                } catch (e) {
+                    console.error('Error loading data', e);
+                }
+            }, []);
+
+            // Save data whenever it changes
+            useEffect(() => {
+                try {
+                    localStorage.setItem('timesheetData', JSON.stringify({
+                        shifts,
+                        payRate,
+                        contractedHours,
+                        inputMode,
+                        taxCode,
+                        niCategory,
+                        pensionPercent,
+                        payFrequency
+                    }));
+                } catch (e) {
+                    console.error('Error saving data', e);
+                }
+            }, [shifts, payRate, contractedHours, inputMode, taxCode, niCategory, pensionPercent, payFrequency]);
+
+            const addShift = () => {
+                const newShift = {
+                    id: Date.now(),
+                    date: new Date().toISOString().split('T')[0],
+                };
+                
+                if (inputMode === 'hours') {
+                    newShift.hours = 7;
+                } else {
+                    newShift.startTime = '09:00';
+                    newShift.endTime = '17:00';
+                    newShift.breakMinutes = 30;
+                }
+                
+                setShifts([...shifts, newShift]);
+            };
+
+            const updateShift = (id, field, value) => {
+                setShifts(shifts.map(shift => 
+                    shift.id === id ? { ...shift, [field]: value } : shift
+                ));
+            };
+
+            const deleteShift = (id) => {
+                setShifts(shifts.filter(shift => shift.id !== id));
+            };
+
+            const calculateHours = (shift) => {
+                if (shift.hours !== undefined) {
+                    return parseFloat(shift.hours) || 0;
+                }
+                
+                const start = new Date(`2000-01-01T${shift.startTime}`);
+                const end = new Date(`2000-01-01T${shift.endTime}`);
+                let hours = (end - start) / (1000 * 60 * 60);
+                if (hours < 0) hours += 24;
+                hours -= (shift.breakMinutes || 0) / 60;
+                return Math.max(0, hours);
+            };
+
+            // Calculate tax-free allowance from tax code
+            const calculateTaxFreeAllowance = () => {
+                const code = taxCode.replace(/[^0-9]/g, '');
+                const annualAllowance = parseInt(code) * 10 || 0;
+                
+                // Convert to period allowance
+                if (payFrequency === 'weekly') {
+                    return annualAllowance / 52;
+                } else if (payFrequency === 'fortnightly') {
+                    return annualAllowance / 26;
+                } else { // monthly
+                    return annualAllowance / 12;
+                }
+            };
+
+            // UK Tax calculations (2024/25 rates)
+            const calculateTax = (grossPay) => {
+                const taxFreeAllowance = calculateTaxFreeAllowance();
+                const taxableIncome = Math.max(0, grossPay - taxFreeAllowance);
+                
+                // Convert annual thresholds to period thresholds
+                let basicRateLimit;
+                if (payFrequency === 'weekly') {
+                    basicRateLimit = 37700 / 52;
+                } else if (payFrequency === 'fortnightly') {
+                    basicRateLimit = 37700 / 26;
+                } else { // monthly
+                    basicRateLimit = 37700 / 12;
+                }
+                
+                let tax = 0;
+                if (taxableIncome <= basicRateLimit) {
+                    tax = taxableIncome * 0.20; // Basic rate 20%
+                } else {
+                    tax = basicRateLimit * 0.20 + (taxableIncome - basicRateLimit) * 0.40; // Higher rate 40%
+                }
+                
+                return tax;
+            };
+
+            // UK National Insurance calculations (2024/25 rates)
+            const calculateNI = (grossPay) => {
+                // NI thresholds based on pay frequency
+                let primaryThreshold, upperEarningsLimit;
+                
+                if (payFrequency === 'weekly') {
+                    primaryThreshold = 242;
+                    upperEarningsLimit = 967;
+                } else if (payFrequency === 'fortnightly') {
+                    primaryThreshold = 484;
+                    upperEarningsLimit = 1934;
+                } else { // monthly
+                    primaryThreshold = 1048;
+                    upperEarningsLimit = 4189;
+                }
+                
+                if (grossPay <= primaryThreshold) return 0;
+                
+                const niableIncome = grossPay - primaryThreshold;
+                
+                if (niCategory === 'A') {
+                    if (grossPay <= upperEarningsLimit) {
+                        return niableIncome * 0.08; // 8% up to upper earnings limit
+                    } else {
+                        return (upperEarningsLimit - primaryThreshold) * 0.08 + (grossPay - upperEarningsLimit) * 0.02; // 2% above
+                    }
+                }
+                
+                return niableIncome * 0.08; // Default 8%
+            };
+
+            const totalHours = shifts.reduce((sum, shift) => sum + calculateHours(shift), 0);
+            const extraHours = Math.max(0, totalHours - contractedHours);
+            const actualContractedHours = Math.min(totalHours, contractedHours);
+            const grossPay = totalHours * payRate;
+            const contractedPay = actualContractedHours * payRate;
+            const extraPay = extraHours * payRate;
+            
+            // Calculate deductions
+            const taxAmount = calculateTax(grossPay);
+            const niAmount = calculateNI(grossPay);
+            const pensionAmount = grossPay * (pensionPercent / 100);
+            const totalDeductions = taxAmount + niAmount + pensionAmount;
+            const netPay = grossPay - totalDeductions;
+
+            const saveSettings = () => {
+                setPayRate(editingPayRate);
+                setContractedHours(editingContractedHours);
+                setInputMode(editingInputMode);
+                setTaxCode(editingTaxCode);
+                setNiCategory(editingNiCategory);
+                setPensionPercent(editingPensionPercent);
+                setPayFrequency(editingPayFrequency);
+                setShowSettings(false);
+            };
+
+            const exportToCSV = () => {
+                const headers = inputMode === 'hours' 
+                    ? ['Date', 'Hours Worked']
+                    : ['Date', 'Start Time', 'End Time', 'Break (mins)', 'Hours Worked'];
+                
+                const rows = shifts.map(shift => {
+                    if (inputMode === 'hours') {
+                        return [shift.date, calculateHours(shift).toFixed(2)];
+                    }
+                    return [
+                        shift.date,
+                        shift.startTime,
+                        shift.endTime,
+                        shift.breakMinutes,
+                        calculateHours(shift).toFixed(2)
+                    ];
+                });
+                
+                const csv = [
+                    headers.join(','),
+                    ...rows.map(row => row.join(',')),
+                    '',
+                    'SUMMARY',
+                    `Total Hours,${totalHours.toFixed(2)}`,
+                    `Contracted Hours,${actualContractedHours.toFixed(2)}`,
+                    `Extra Hours,${extraHours.toFixed(2)}`,
+                    `Pay Rate,£${payRate.toFixed(2)}`,
+                    '',
+                    'PAY BREAKDOWN',
+                    `Gross Pay,£${grossPay.toFixed(2)}`,
+                    `Tax,£${taxAmount.toFixed(2)}`,
+                    `National Insurance,£${niAmount.toFixed(2)}`,
+                    `Pension (${pensionPercent}%),£${pensionAmount.toFixed(2)}`,
+                    `Total Deductions,£${totalDeductions.toFixed(2)}`,
+                    `Net Pay,£${netPay.toFixed(2)}`
+                ].join('\n');
+
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `timesheet-${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 p-4">
+                    <div className="max-w-4xl mx-auto">
+                        {/* Header */}
+                        <div className="bg-white rounded-lg shadow-lg p-6 mb-4">
+                            <div className="flex justify-between items-center mb-4">
+                                <h1 className="text-3xl font-bold text-gray-800">PayCheck</h1>
+                                <button
+                                    onClick={() => setShowSettings(!showSettings)}
+                                    className="p-2 hover:bg-gray-100 rounded-lg transition"
+                                >
+                                    <Settings />
+                                </button>
+                            </div>
+                            
+                            {/* Disclaimer */}
+                            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+                                <div className="flex">
+                                    <div className="flex-shrink-0">
+                                        <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                    <div className="ml-3">
+                                        <p className="text-sm text-blue-700">
+                                            <strong>Important:</strong> This tool provides approximate calculations for cross-checking your pay. 
+                                            Large discrepancies between this calculator and your payslip should be discussed with your employer. 
+                                            Small differences may be due to tax codes, pay period adjustments, or settings configured in this app. 
+                                            Always verify your actual payslip for accurate deductions.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Settings Panel */}
+                            {showSettings && (
+                                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                                    <h2 className="text-lg font-semibold mb-3">Settings</h2>
+                                    <div className="space-y-3">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Hourly Pay Rate (£)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={editingPayRate}
+                                                    onChange={(e) => setEditingPayRate(parseFloat(e.target.value))}
+                                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Contracted Hours per Period
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    step="0.1"
+                                                    value={editingContractedHours}
+                                                    onChange={(e) => setEditingContractedHours(parseFloat(e.target.value))}
+                                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                                />
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="border-t pt-3">
+                                            <h3 className="text-sm font-semibold text-gray-700 mb-2">Tax & Deductions</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                        Pay Frequency
+                                                    </label>
+                                                    <select
+                                                        value={editingPayFrequency}
+                                                        onChange={(e) => setEditingPayFrequency(e.target.value)}
+                                                        className="w-full p-2 border border-gray-300 rounded-lg"
+                                                    >
+                                                        <option value="weekly">Weekly</option>
+                                                        <option value="fortnightly">Fortnightly</option>
+                                                        <option value="monthly">Monthly</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                        Pension (%)
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.1"
+                                                        value={editingPensionPercent}
+                                                        onChange={(e) => setEditingPensionPercent(parseFloat(e.target.value))}
+                                                        className="w-full p-2 border border-gray-300 rounded-lg"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                        Tax Code
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={editingTaxCode}
+                                                        onChange={(e) => setEditingTaxCode(e.target.value)}
+                                                        className="w-full p-2 border border-gray-300 rounded-lg"
+                                                        placeholder="e.g. 562L"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                        NI Category
+                                                    </label>
+                                                    <select
+                                                        value={editingNiCategory}
+                                                        onChange={(e) => setEditingNiCategory(e.target.value)}
+                                                        className="w-full p-2 border border-gray-300 rounded-lg"
+                                                    >
+                                                        <option value="A">A - Standard</option>
+                                                        <option value="B">B - Married women</option>
+                                                        <option value="C">C - Over pension age</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="border-t pt-3">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Input Mode
+                                            </label>
+                                            <div className="space-y-2">
+                                                <label className="flex items-center">
+                                                    <input
+                                                        type="radio"
+                                                        name="inputMode"
+                                                        value="time"
+                                                        checked={editingInputMode === 'time'}
+                                                        onChange={(e) => setEditingInputMode(e.target.value)}
+                                                        className="mr-2"
+                                                    />
+                                                    <span className="text-sm">Time-based (enter start/end times with breaks)</span>
+                                                </label>
+                                                <label className="flex items-center">
+                                                    <input
+                                                        type="radio"
+                                                        name="inputMode"
+                                                        value="hours"
+                                                        checked={editingInputMode === 'hours'}
+                                                        onChange={(e) => setEditingInputMode(e.target.value)}
+                                                        className="mr-2"
+                                                    />
+                                                    <span className="text-sm">Hours-based (just enter total hours worked)</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        
+                                        <button
+                                            onClick={saveSettings}
+                                            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
+                                        >
+                                            Save Settings
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Summary Cards */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                                <div className="bg-blue-50 rounded-lg p-4">
+                                    <div className="text-sm text-blue-600 font-medium">Total Hours</div>
+                                    <div className="text-2xl font-bold text-blue-900">{totalHours.toFixed(2)}</div>
+                                </div>
+                                <div className="bg-green-50 rounded-lg p-4">
+                                    <div className="text-sm text-green-600 font-medium">Contracted</div>
+                                    <div className="text-2xl font-bold text-green-900">{actualContractedHours.toFixed(2)}</div>
+                                </div>
+                                <div className="bg-purple-50 rounded-lg p-4">
+                                    <div className="text-sm text-purple-600 font-medium">Extra Hours</div>
+                                    <div className="text-2xl font-bold text-purple-900">{extraHours.toFixed(2)}</div>
+                                </div>
+                                <div className="bg-yellow-50 rounded-lg p-4">
+                                    <div className="text-sm text-yellow-600 font-medium">Gross Pay</div>
+                                    <div className="text-2xl font-bold text-yellow-900">£{grossPay.toFixed(2)}</div>
+                                </div>
+                            </div>
+
+                            {/* Payslip-style Breakdown */}
+                            <div className="bg-gray-50 rounded-lg p-4">
+                                <div className="grid md:grid-cols-2 gap-6">
+                                    {/* Payments */}
+                                    <div>
+                                        <h3 className="font-semibold text-gray-700 mb-3 text-sm uppercase">Payments</h3>
+                                        <div className="space-y-2 text-sm">
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">Contracted Hours</span>
+                                                <span className="font-medium">{actualContractedHours.toFixed(2)} hrs @ £{payRate.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600"></span>
+                                                <span className="font-semibold">£{contractedPay.toFixed(2)}</span>
+                                            </div>
+                                            {extraHours > 0 && (
+                                                <>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-gray-600">Extra Hours</span>
+                                                        <span className="font-medium">{extraHours.toFixed(2)} hrs @ £{payRate.toFixed(2)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-gray-600"></span>
+                                                        <span className="font-semibold">£{extraPay.toFixed(2)}</span>
+                                                    </div>
+                                                </>
+                                            )}
+                                            <div className="flex justify-between border-t pt-2 mt-2">
+                                                <span className="font-bold text-gray-800">Gross Pay</span>
+                                                <span className="font-bold text-gray-800">£{grossPay.toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Deductions */}
+                                    <div>
+                                        <h3 className="font-semibold text-gray-700 mb-3 text-sm uppercase">Deductions</h3>
+                                        <div className="space-y-2 text-sm">
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">Tax ({taxCode})</span>
+                                                <span className="font-semibold text-red-600">£{taxAmount.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">NI - {niCategory}</span>
+                                                <span className="font-semibold text-red-600">£{niAmount.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">Pension ({pensionPercent}%)</span>
+                                                <span className="font-semibold text-red-600">£{pensionAmount.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between border-t pt-2 mt-2">
+                                                <span className="font-bold text-gray-800">Total Deductions</span>
+                                                <span className="font-bold text-red-600">£{totalDeductions.toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* Net Pay - Prominent */}
+                                <div className="mt-4 pt-4 border-t-2 border-gray-300">
+                                    <div className="flex justify-between items-center bg-green-100 rounded-lg p-4">
+                                        <span className="text-lg font-bold text-green-800">NET PAY</span>
+                                        <span className="text-3xl font-bold text-green-900">£{netPay.toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-2 mb-4">
+                            <button
+                                onClick={exportToCSV}
+                                disabled={shifts.length === 0}
+                                className="bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
+                            >
+                                <Download />
+                                Export
+                            </button>
+                        </div>
+
+                        {/* Two Column Layout */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            {/* Left Column: Add Shift Form */}
+                            <div className="bg-white rounded-lg shadow p-6">
+                                <h2 className="text-xl font-bold text-gray-800 mb-4">Add Shift</h2>
+                                
+                                {inputMode === 'hours' ? (
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                                            <input
+                                                type="date"
+                                                id="newShiftDate"
+                                                defaultValue={new Date().toISOString().split('T')[0]}
+                                                className="w-full p-3 border border-gray-300 rounded-lg"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Hours Worked</label>
+                                            <input
+                                                type="number"
+                                                step="0.5"
+                                                id="newShiftHours"
+                                                defaultValue="7"
+                                                className="w-full p-3 border border-gray-300 rounded-lg"
+                                            />
+                                            <div className="text-xs text-gray-500 mt-1">Common: 7, 10, or 14 hours</div>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                const date = document.getElementById('newShiftDate').value;
+                                                const hours = parseFloat(document.getElementById('newShiftHours').value) || 0;
+                                                const newShift = {
+                                                    id: Date.now(),
+                                                    date: date,
+                                                    hours: hours
+                                                };
+                                                setShifts([...shifts, newShift]);
+                                            }}
+                                            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 font-semibold"
+                                        >
+                                            <Plus />
+                                            Add Shift
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                                            <input
+                                                type="date"
+                                                id="newShiftDate"
+                                                defaultValue={new Date().toISOString().split('T')[0]}
+                                                className="w-full p-3 border border-gray-300 rounded-lg"
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                                                <input
+                                                    type="time"
+                                                    id="newShiftStart"
+                                                    defaultValue="09:00"
+                                                    className="w-full p-3 border border-gray-300 rounded-lg"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                                                <input
+                                                    type="time"
+                                                    id="newShiftEnd"
+                                                    defaultValue="17:00"
+                                                    className="w-full p-3 border border-gray-300 rounded-lg"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Break (minutes)</label>
+                                            <input
+                                                type="number"
+                                                id="newShiftBreak"
+                                                defaultValue="30"
+                                                className="w-full p-3 border border-gray-300 rounded-lg"
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                const date = document.getElementById('newShiftDate').value;
+                                                const start = document.getElementById('newShiftStart').value;
+                                                const end = document.getElementById('newShiftEnd').value;
+                                                const breakMins = parseInt(document.getElementById('newShiftBreak').value) || 0;
+                                                const newShift = {
+                                                    id: Date.now(),
+                                                    date: date,
+                                                    startTime: start,
+                                                    endTime: end,
+                                                    breakMinutes: breakMins
+                                                };
+                                                setShifts([...shifts, newShift]);
+                                            }}
+                                            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 font-semibold"
+                                        >
+                                            <Plus />
+                                            Add Shift
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Right Column: Shifts List */}
+                            <div className="bg-white rounded-lg shadow p-6">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h2 className="text-xl font-bold text-gray-800">Your Shifts ({shifts.length})</h2>
+                                    {shifts.length > 0 && (
+                                        <button
+                                            onClick={() => {
+                                                if (confirm('Clear all shifts?')) {
+                                                    setShifts([]);
+                                                }
+                                            }}
+                                            className="text-sm text-red-600 hover:text-red-700"
+                                        >
+                                            Clear All
+                                        </button>
+                                    )}
+                                </div>
+                                
+                                <div className="space-y-2 max-h-96 overflow-y-auto">
+                                    {shifts.length === 0 ? (
+                                        <div className="text-center py-12 text-gray-400">
+                                            <p>No shifts added yet</p>
+                                            <p className="text-sm mt-2">Add your first shift →</p>
+                                        </div>
+                                    ) : (
+                                        [...shifts]
+                                            .sort((a, b) => new Date(b.date) - new Date(a.date))
+                                            .map(shift => (
+                                                <div key={shift.id} className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition">
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="flex-1">
+                                                            <div className="font-semibold text-gray-800">
+                                                                {new Date(shift.date + 'T00:00:00').toLocaleDateString('en-GB', { 
+                                                                    weekday: 'short', 
+                                                                    day: 'numeric', 
+                                                                    month: 'short',
+                                                                    year: 'numeric'
+                                                                })}
+                                                            </div>
+                                                            <div className="text-sm text-gray-600 mt-1">
+                                                                {inputMode === 'hours' || shift.hours !== undefined ? (
+                                                                    <span>{shift.hours} hours</span>
+                                                                ) : (
+                                                                    <span>{shift.startTime} - {shift.endTime} ({shift.breakMinutes}min break)</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="text-right">
+                                                                <div className="text-lg font-bold text-blue-600">
+                                                                    {calculateHours(shift).toFixed(2)}h
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => deleteShift(shift.id)}
+                                                                className="p-1 text-red-600 hover:bg-red-50 rounded transition"
+                                                            >
+                                                                <Trash2 />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Ad Space Placeholder */}
+                        <div className="mt-6 bg-gray-100 rounded-lg p-8 text-center border-2 border-dashed border-gray-300">
+                            <p className="text-gray-500 text-sm">Advertisement Space</p>
+                            <p className="text-xs text-gray-400 mt-1">Your ads will appear here</p>
+                        </div>
+
+                        {/* Support Section */}
+                        <div className="mt-4 bg-white rounded-lg shadow p-6 text-center">
+                            <div className="flex justify-center mb-2">
+                                <DollarSign />
+                            </div>
+                            <h3 className="font-semibold text-gray-800 mb-2">Find this helpful?</h3>
+                            <p className="text-sm text-gray-600 mb-4">
+                                Support the development of free tools like this
+                            </p>
+                            <a 
+                                href="https://paypal.me/yourusername" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="inline-block bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold py-2 px-6 rounded-lg transition"
+                            >
+                                Donate via PayPal
+                            </a>
+                            <p className="text-xs text-gray-500 mt-2">Replace the link above with your PayPal.me link</p>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="mt-6 text-center text-sm text-gray-500">
+                            <p className="font-semibold text-gray-700">PayCheck - Fair Pay Tracker for Agency Workers</p>
+                            <p className="mt-1">Made with ❤️ for agency workers everywhere</p>
+                            <p className="mt-1">All data stored locally in your browser - your privacy is protected</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<TimesheetCalculator />, document.getElementById('root'));
+    </script>
+</body>
+</html>
+                
